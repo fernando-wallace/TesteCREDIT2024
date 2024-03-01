@@ -1,0 +1,64 @@
+/*Criação de tabelas*/
+CREATE TABLE FinancialInstruments
+(
+    InstrumentID INT PRIMARY KEY,
+    MarketValue DECIMAL(18, 2),
+    Type NVARCHAR(50)
+);
+
+CREATE TABLE CategorizedInstruments
+(
+    InstrumentID INT PRIMARY KEY,
+    Category NVARCHAR(50)
+);
+
+CREATE TABLE CategoryRules
+(
+    RuleID INT PRIMARY KEY,
+    MinValue DECIMAL(18, 2),
+    MaxValue DECIMAL(18, 2),
+    Category NVARCHAR(50)
+);
+GO
+
+/*Criação da Procedure*/
+CREATE PROCEDURE CategorizeInstruments
+AS
+BEGIN
+    INSERT INTO CategorizedInstruments (InstrumentID, Category)
+    SELECT
+        InstrumentID,
+        COALESCE(
+            (
+                SELECT TOP 1 Category
+                FROM CategoryRules
+                WHERE FinancialInstruments.MarketValue >= MinValue AND (FinancialInstruments.MarketValue <= MaxValue OR MaxValue IS NULL)
+                ORDER BY MinValue
+            ), 'Uncategorized'
+        ) AS Category
+    FROM
+        FinancialInstruments;
+END;
+GO
+
+/*Inserção de dados para teste*/
+INSERT INTO CategoryRules (RuleID, MinValue, MaxValue, Category)
+VALUES
+    (1, 0, 1000000, 'Low Value'),
+    (2, 1000000, 5000000, 'Medium Value'),
+    (3, 5000000, NULL, 'High Value');
+
+INSERT INTO FinancialInstruments (InstrumentID, MarketValue, Type)
+VALUES
+    (1, 800000, 'Stock'),
+    (2, 1500000, 'Bond'),
+    (3, 6000000, 'Derivative'),
+    (4, 300000, 'Stock');
+GO
+
+/*Execução da Procedure*/
+EXEC CategorizeInstruments;
+GO
+
+/*Visualização dos resultados*/
+SELECT * FROM CategorizedInstruments;
